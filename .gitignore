@@ -1,0 +1,7 @@
+*.o
+*.tab.hpp
+*.tab.cpp
+*.yy.cpp
+*.dot
+c_parser
+makefile

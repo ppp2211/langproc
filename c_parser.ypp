@@ -1,0 +1,411 @@
+%token AUTO DOUBLE INT STRUCT BREAK ELSE LONG SWITCH CASE ENUM REGISTER TYPEDEF CHAR EXTERN RETURN UNION CONST FLOAT SHORT UNSIGNED CONTINUE FOR SIGNED VOID DEFAULT GOTO VOLATILE DO IF STATIC WHILE
+
+%token OP_PTR OP_INCR OP_DECR OP_SIZEOF OP_LEFT OP_RIGHT OP_LESSEQ OP_GREQ OP_ISEQ OP_NOTEQ OP_AND OP_OR OP_MULTEQ OP_DIVEQ OP_MODEQ OP_ADDEQ OP_SUBEQ OP_LEFTEQ OP_RIGHTEQ OP_ANDEQ OP_XOREQ OP_OREQ OP_DOTS 
+
+%token C_FLOAT C_CHAR T_STRING
+
+%code requires {	
+	#include <string>
+	#include <iostream>
+	#include <stdio.h>
+	#include "ast_class.hpp"
+	using namespace std;
+
+	extern "C" int yylex(void);
+  	void yyerror(const char *);
+
+	static declarations *treeroot;
+}
+
+%token <num> C_DEC C_HEX C_OCT
+%token <id> IDENT 
+
+%start translation_unit
+
+%union{
+	int num;
+	char *id;
+	expr_node *exprnode;
+	//stmt *stmtnode;
+	declarations *declnode;
+}	
+
+%type <id> decln_specs;
+
+%type <exprnode> prim_expr postfix_expr unary_expr cast_expr mult_expr add_expr shift_expr rel_expr eq_expr and_expr xor_expr or_expr logand_expr logor_expr cond_expr assign_expr;
+
+//%type <smmtnode>
+
+%type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr
+
+
+
+%%
+
+prim_expr
+	: IDENT {$$ = new id_node($1);}
+	| C_DEC {$$ = new int_node($1);}
+	| C_HEX {$$ = new int_node($1);}
+	| C_OCT {$$ = new int_node($1);}
+	| T_STRING
+	| '(' expr ')'
+	;
+	
+postfix_expr
+	: prim_expr {$$ = $1;}
+	| postfix_expr '[' expr ']'
+	| postfix_expr '(' ')'
+	| postfix_expr '(' arg_expr_l ')'
+	| postfix_expr '.' IDENT
+	| postfix_expr OP_PTR IDENT
+	| postfix_expr OP_INCR
+	| postfix_expr OP_DECR
+	;
+	
+arg_expr_l
+	: assign_expr
+	| arg_expr_l ',' assign_expr
+	;
+	
+unary_expr 
+	: postfix_expr {$$ = $1;}
+	| OP_INCR unary_expr
+	| OP_DECR unary_expr
+	| unary_op cast_expr
+	| OP_SIZEOF unary_expr
+	| OP_SIZEOF '(' type_name ')'
+	;
+
+unary_op
+	: '&'
+	| '*'
+	| '+'
+	| '-'
+	| '~'
+	| '!'
+	;
+	
+cast_expr
+	: unary_expr {$$ = $1;}
+	| '(' type_name ')' cast_expr
+	;
+	
+mult_expr
+	: cast_expr {$$ = $1;}
+	| mult_expr '*' cast_expr {$$ = new op_node($1, "*", $3);}
+	| mult_expr '/' cast_expr {$$ = new op_node($1, "/", $3);}
+	| mult_expr '%' cast_expr {$$ = new op_node($1, "%", $3);}
+	;
+	
+add_expr
+	: mult_expr {$$ = $1;}
+	| add_expr '+' mult_expr {$$ = new op_node($1, "+", $3);}
+	| add_expr '-' mult_expr {$$ = new op_node($1, "-", $3);}
+	;
+	
+shift_expr
+	: add_expr {$$ = $1;}
+	| shift_expr OP_LEFT add_expr
+	| shift_expr OP_RIGHT add_expr
+	;
+	
+rel_expr
+	: shift_expr {$$ = $1;}
+	| rel_expr '<' shift_expr
+	| rel_expr '>' shift_expr
+	| rel_expr OP_GREQ shift_expr
+	| rel_expr OP_LESSEQ shift_expr
+	;
+	
+eq_expr
+	: rel_expr {$$ = $1;}
+	| eq_expr OP_ISEQ rel_expr
+	| eq_expr OP_NOTEQ rel_expr
+	;
+	
+and_expr	
+	: eq_expr {$$ = $1;}
+	| and_expr '&' eq_expr
+	;
+
+xor_expr	
+	: and_expr {$$ = $1;}
+	| xor_expr '^' and_expr
+	;
+	
+or_expr	
+	: xor_expr {$$ = $1;}
+	| or_expr '|' xor_expr
+	;
+	
+logand_expr
+	: or_expr {$$ = $1;}
+	| logand_expr OP_AND or_expr
+	;
+	
+logor_expr
+	: logand_expr {$$ = $1;}
+	| logor_expr OP_OR logand_expr
+	;
+	
+cond_expr
+	: logor_expr {$$ = $1;}
+	| logor_expr '?' expr ':' cond_expr
+	;
+	
+assign_expr
+	: cond_expr {$$ = $1;}
+	| unary_expr assign_op assign_expr
+	;
+	
+assign_op
+	: '='
+	| OP_MULTEQ
+	| OP_DIVEQ
+	| OP_MODEQ
+	| OP_ADDEQ
+	| OP_SUBEQ
+	| OP_LEFTEQ
+	| OP_RIGHTEQ
+	| OP_ANDEQ
+	| OP_OREQ
+	| OP_XOREQ
+	;
+	
+expr
+	: assign_expr
+	| expr ',' assign_expr
+	;
+	
+const_expr
+	: cond_expr
+	;
+	
+decln
+	: decln_specs ';'
+	| decln_specs init_declr ';' {$$ = new decln($1, $2); treeroot = $$;} 
+	;
+
+decln_specs 
+	: store_class_spec 
+	| store_class_spec decln_specs
+	| type_spec {$$ = "INT";}
+	| type_spec decln_specs
+	| type_qual 
+	| type_qual decln_specs
+	;
+	
+/*init_declr_l
+	: init_declr {$$ = $1;}
+	| init_declr_l ',' init_declr
+	;
+*/	
+
+init_declr
+	: declr 
+	| declr '=' initzer {$$ = new init_declr($1, $3);}
+	;
+	
+store_class_spec
+	: TYPEDEF
+	| EXTERN
+	| STATIC
+	| AUTO 
+	| REGISTER
+	;
+	
+type_spec
+	: VOID
+	| CHAR
+	| SHORT
+	| INT
+	| LONG
+	| FLOAT
+	| DOUBLE
+	| SIGNED 
+	| UNSIGNED 
+	;
+	
+spec_qual_l 
+	: type_spec spec_qual_l
+	| type_spec 
+	| type_qual spec_qual_l
+	| type_qual
+	;
+
+	
+type_qual	
+	: CONST
+	| VOLATILE
+	;
+	
+declr
+	: ptr direct_declr
+	| direct_declr {$$ = $1;}
+	;
+
+direct_declr
+	: IDENT {$$ = new dir_declr($1);}
+	| '(' declr ')'
+	| direct_declr '[' const_expr ']'
+	| direct_declr '['']'
+	| direct_declr '(' param_type_l ')'
+	| direct_declr '(' ident_l ')'
+	| direct_declr '('')'
+	;
+	
+ptr
+	: '*' 
+	| '*' type_qual_l
+	| '*' ptr
+	| '*' type_qual_l ptr
+	;
+	
+type_qual_l
+	: type_qual
+	| type_qual_l type_qual
+	;
+	
+param_type_l
+	: param_l
+	| param_l ',' OP_DOTS
+	;
+
+param_l
+	: param_decln
+	| param_l ',' param_decln
+	;
+	
+param_decln
+	: decln_specs declr
+	| decln_specs abstr_declr
+	| decln_specs
+	;
+	
+ident_l
+	: IDENT
+	| ident_l ',' IDENT
+	;
+	
+type_name 
+	: spec_qual_l
+	| spec_qual_l abstr_declr
+	;
+	
+abstr_declr
+	: ptr
+	| direct_abstr_declr
+	| ptr direct_abstr_declr	
+	;
+	
+direct_abstr_declr
+	: '(' abstr_declr ')'
+	| '['']'
+	| '[' const_expr ']'
+	| direct_abstr_declr '['']'
+	| direct_abstr_declr '[' const_expr ']'
+	| '('')'
+	| '(' param_type_l ')'
+	| direct_abstr_declr '('')'
+	| direct_abstr_declr '(' param_type_l ')'
+	;
+	
+initzer
+	: assign_expr {$$ = new init($1);}
+	| '{' initzer_l '}'
+	| '{' initzer_l ',' '}'
+	;
+	
+initzer_l
+	: initzer
+	| initzer_l ',' initzer
+	;
+	
+stmt
+	: labeled_stmt
+	| comp_stmt
+	| expr_stmt
+	| sel_stmt
+	| iteration_stmt
+	| jump_stmt
+	;
+	
+labeled_stmt
+	: IDENT ':' stmt
+	| CASE const_expr ':' stmt
+	| DEFAULT ':' stmt
+	;
+	
+comp_stmt
+	: '{' decln_l stmt_l '}' 
+	| '{' stmt_l '}'
+	| '{' decln_l '}'
+ 	| '{''}'
+ 	;
+ 	
+decln_l
+	: decln
+	| decln_l decln
+	;
+	
+stmt_l
+	: stmt
+	| stmt_l stmt
+	;
+	
+expr_stmt
+	: ';'
+	| expr ';'
+	;
+	
+sel_stmt
+	: IF '(' expr ')' stmt
+	| IF '(' expr ')' stmt ELSE stmt
+	| SWITCH '(' expr ')' stmt
+	;
+	
+iteration_stmt
+	: WHILE '(' expr ')' stmt
+	| DO stmt WHILE '(' expr ')'
+	| FOR '(' expr ';' expr ';' expr ')' stmt
+	| FOR '(' expr ';' expr ';' ')' stmt
+	;
+	
+jump_stmt
+	: GOTO IDENT ';'
+	| CONTINUE ';'
+	| BREAK ';'
+	| RETURN ';'
+	| RETURN expr ';'
+	;
+	
+translation_unit	
+	: extern_decln {$$ = $1;}
+	| translation_unit extern_decln
+	;
+	
+extern_decln
+	: fn_defn
+	| decln {$$ = $1;}
+	;
+
+fn_defn
+	: decln_specs declr
+	| declr
+	| decln_l comp_stmt
+	| comp_stmt
+	;
+
+		
+%%
+
+void yyerror(const char *){
+}
+
+int main(){
+	yyparse();
+	treeroot->evaluate();
+	cout << endl;
+	treeroot->print();
+	return 0;
+}

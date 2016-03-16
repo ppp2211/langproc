@@ -1,0 +1,145 @@
+%option noyywrap
+
+
+%{
+#include <stdio.h>
+#include <string>
+#include <sstream>
+#include <iostream>
+#include "c_parser.tab.hpp"
+
+
+#define YY_DECL extern "C" int yylex()
+
+int lines=1;
+int sourceline=1;
+std::string filename = "";
+%}
+
+IDENT         [a-zA-Z][a-zA-Z0-9]*
+
+FRAC_CON      ([0-9]*[.][0-9]+)|([0-9]+[.])
+EXP_PART      ([eE][+-]?[0-9]+)
+FLOATC        (({FRAC_CON}{EXP_PART}?)|([0-9]+{EXP_PART}))[flFL]?
+
+
+INTDEC        (([1-9])|([1-9][0-9]+))(([uU][lL]?)|([lL][uU]?))?
+INTOCT        [0][0-7]+(([uU][lL]?)|([lL][uU]?))?
+INTHEX        (0[xX][0-9a-fA-F]+)(([uU][lL]?)|([lL][uU]?))?
+
+ESC           (\\[\'\"\?\\abfnrtv])|(\\[0-7]{1,3})|(\\[x][0-9a-fA-F]+)
+
+CHARC         [L]?\'({ESC}|[^\\\'\n])+\'
+
+STRING        [L]?\"({ESC}|[^\\\"\n])*\"
+
+PREPROC       ([\#].*[\n])
+
+%%
+
+"auto"        {return AUTO;}
+"double"      {return DOUBLE;}
+"int"         {return INT;}
+"struct"      {return STRUCT;}
+"break"       {return BREAK;}
+"else"        {return ELSE;}
+"long"        {return LONG;}
+"switch"      {return SWITCH;}
+"case"        {return CASE;}
+"enum"        {return ENUM;}
+"register"    {return REGISTER;}
+"typedef"     {return TYPEDEF;}
+"char"        {return CHAR;}
+"extern"      {return EXTERN;}
+"return"      {return RETURN;}
+"union"       {return UNION;}
+"const"       {return CONST;}
+"float"       {return FLOAT;}
+"short"       {return SHORT;}
+"unsigned"    {return UNSIGNED;}
+"continue"    {return CONTINUE;}
+"for"         {return FOR;}
+"signed"      {return SIGNED;}
+"void"        {return VOID;}
+"default"     {return DEFAULT;}
+"goto"        {return GOTO;}
+"volatile"    {return VOLATILE;}
+"do"          {return DO;}
+"if"          {return IF;}
+"static"      {return STATIC;}
+"while"       {return WHILE;}
+
+"["       {return '[';}
+"]"       {return ']';}
+"("       {return '(';}
+")"       {return ')';}
+"{"       {return '{';}
+"}"       {return '}';}
+"."       {return '.';}
+"->"      {return OP_PTR;}
+"++"      {return OP_INCR;}
+"--"      {return OP_DECR;}
+"&"       {return '&';}
+"|"       {return '|';}
+"*"       {return '*';}
+"+"			{return '+';}
+"-"       {return '-';}
+"~"       {return '~';}
+"!"       {return '!';}
+"sizeof"  {return OP_SIZEOF;}
+"/"       {return '/';}
+"%"       {return '%';}
+"<<"      {return OP_LEFT;}
+">>"      {return OP_RIGHT;}
+"<"       {return '<';}
+">"       {return '>';}
+"<="      {return OP_LESSEQ;}
+">="      {return OP_GREQ;}
+"=="      {return OP_ISEQ;}
+"!="      {return OP_NOTEQ;}
+"^"       {return '^';}
+"&&"      {return OP_AND;}
+"||"      {return OP_OR;}
+"?"       {return '?';}
+":"       {return ':';}
+"="       {return '=';}
+"*="      {return OP_MULTEQ;}
+"/="      {return OP_DIVEQ;}
+"%="      {return OP_MODEQ;}
+"+="      {return OP_ADDEQ;}
+"-="      {return OP_SUBEQ;}
+"<<="     {return OP_LEFTEQ;}
+">>="     {return OP_RIGHTEQ;}
+"&="      {return OP_ANDEQ;}
+"^="      {return OP_XOREQ;}
+"|="      {return OP_OREQ;}
+
+";"      {return ';';}
+"..."      {return OP_DOTS;}
+
+
+{STRING}        {return T_STRING;}
+
+{FLOATC}       {return C_FLOAT;}
+{INTDEC}          {yylval.num = atoi(yytext); return C_DEC;}
+{INTOCT}          {return C_OCT;}
+{INTHEX}          {return C_HEX;}
+{CHARC}         {return C_CHAR;}
+
+{IDENT}         {yylval.id=strdup(yytext); return IDENT;}
+
+[\n]            { lines++; sourceline++;}
+[ \t]           { ;}
+
+.               {}
+
+{PREPROC}   {std::stringstream ss(yytext);
+          std::string tmp;
+          ss >> tmp >> tmp;
+          sourceline = atoi(tmp.c_str());
+          ss >> tmp;
+          filename = tmp;
+          lines++;
+          }
+
+%%
