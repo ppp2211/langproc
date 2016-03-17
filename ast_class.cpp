@@ -311,5 +311,23 @@ int assign_expr::evaluate(){
 	return tmpval;
 }
 
+return_stmt::return_stmt(expr_node* expr){
+	return_expr = expr;
+}
+
+void return_stmt::print(){
+	if(return_expr != NULL){	
+	cout << "return ";
+	return_expr->print();
+	}
+}
+
+int return_stmt::evaluate(){
+	if(return_expr != NULL){
+	int tmpval = return_expr->evaluate();
+	cout << "return value: " << tmpval << endl;
+	return tmpval;}
+	return 0;
+}
 map<string, int> idMap;
 

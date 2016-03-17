@@ -37,7 +37,7 @@
 
 %type <exprnode> prim_expr postfix_expr unary_expr cast_expr mult_expr add_expr shift_expr rel_expr eq_expr and_expr xor_expr or_expr logand_expr logor_expr cond_expr assign_expr expr
 
-%type <stmtnode> expr_stmt comp_stmt stmt_l stmt
+%type <stmtnode> expr_stmt comp_stmt stmt_l stmt jump_stmt
 
 %type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr fn_defn decln_l
 
@@ -330,7 +330,7 @@ stmt
 	| expr_stmt {$$ = $1;}
 	| sel_stmt
 	| iteration_stmt
-	| jump_stmt
+	| jump_stmt {$$ = $1;}
 	;
 	
 labeled_stmt
@@ -378,8 +378,8 @@ jump_stmt
 	: GOTO IDENT ';'
 	| CONTINUE ';'
 	| BREAK ';'
-	| RETURN ';'
-	| RETURN expr ';'
+	| RETURN ';' {$$ = new return_stmt(NULL);}
+	| RETURN expr ';'{$$ = new return_stmt($2);}
 	;
 	
 translation_unit	

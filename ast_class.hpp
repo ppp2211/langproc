@@ -174,4 +174,13 @@ class assign_expr : public expr_node{
 		int evaluate();	
 };
 
+class return_stmt : public stmt{
+	protected:
+		expr_node* return_expr;
+	public:
+		return_stmt(expr_node* expr);
+		void print();
+		int evaluate();	
+};
+
 #endif
