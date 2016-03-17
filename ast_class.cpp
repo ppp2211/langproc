@@ -5,6 +5,9 @@
 #include "ast_class.hpp"
 using namespace std;
 
+string expr_node::eval_str(){
+	return "invalid_type";
+}
 
 op_node::op_node(expr_node *L, string sign, expr_node *R){
 	left = L;
@@ -75,28 +78,15 @@ void id_node::print(){
 	cout << id;
 }
 
+string id_node::eval_str(){
+	return id;
+}
+
 int id_node::evaluate(){
 	cout << "id: " << " = " << idMap[id] << endl;
 	return idMap[id];
 }
 
-/*assignment::assignment(string name, expr_node *expression){
-	id = name;
-	expr = expression;
-}
-
-void assignment::evaluate(){
-	int result = expr->evaluate();
-	cout << "assignment: " << id << " = " << result << endl;
-	idTable[id] = result;
-}
-
-void assignment::print(){
-	cout << id << " = ";
-	exp->print();
-	cout << endl;
-}
-*/
 
 string declarations::eval_str(){
 	return "invalid_type";
@@ -140,15 +130,21 @@ init_declr::init_declr(declarations *dec, declarations *initzer){
 
 void init_declr::print(){
 	declarator->print();
+
+	if(initializer != NULL){
 	cout << " = ";
 	initializer->print();
+	}
 }
 
 int init_declr::evaluate(){
 	string tmpid = declarator->eval_str();
-	int tmpval = initializer->evaluate();
-	idMap[tmpid] = tmpval;
-	return tmpval;
+	if(initializer != NULL){	
+		int tmpval = initializer->evaluate();
+		idMap[tmpid] = tmpval;
+		return tmpval;
+	}
+	return 0;
 }	
 
 decln::decln (string typespec, declarations *decl){	
@@ -177,7 +173,7 @@ trans_unit::trans_unit(declarations* T, declarations* D){
 void trans_unit::print(){
 	if(translu != NULL){	
 		translu->print();
-	}	
+	}
 	decl->print();
 }
 
@@ -276,7 +272,8 @@ int expr_stmt::evaluate(){
 	}
 }
 
-fn_defn::fn_defn(declarations* declnlist, stmt* compstmt){
+fn_defn::fn_defn(string typespec, declarations* declnlist, stmt* compstmt){
+	type = typespec;	
 	decln_l = declnlist;
 	comp_stmt = compstmt;
 }
@@ -295,5 +292,24 @@ int fn_defn::evaluate(){
 	comp_stmt->evaluate();
 	return 0;
 }
+
+assign_expr::assign_expr(expr_node* ident, expr_node* value){
+	id = ident;	
+	val = value;
+}
+
+void assign_expr::print(){
+	id->print();
+	cout << " = ";
+	val->print();	
+}
+
+int assign_expr::evaluate(){
+	string tmpid = id->eval_str();
+	int tmpval = val->evaluate();
+	idMap[tmpid] = tmpval;
+	return tmpval;
+}
+
 map<string, int> idMap;
 

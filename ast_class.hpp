@@ -13,6 +13,7 @@ class expr_node{
 	public:
 		virtual void print() = 0;
 		virtual int evaluate() = 0;
+		virtual string eval_str();
 };
 
 class op_node : public expr_node {
@@ -43,6 +44,7 @@ class id_node : public expr_node{
 		id_node(string ident);
 		void print();
 		int evaluate();
+		string eval_str();
 };
 
 
@@ -150,15 +152,26 @@ class expr_stmt : public stmt{
 
 class fn_defn : public declarations{
 	protected:
+		string type;
 		declarations* decln_l;
 		stmt* comp_stmt;
 	public:
-		fn_defn(declarations* declnlist, stmt* compstmt);
+		fn_defn(string typespec, declarations* declnlist, stmt* compstmt);
 		void print();
 		int evaluate();
 };
 
 extern map<string, int> idMap;
 
+class assign_expr : public expr_node{
+	protected:
+		expr_node* id;
+		expr_node* val;
+
+	public:
+		assign_expr(expr_node* ident, expr_node* value);
+		void print();
+		int evaluate();	
+};
 
 #endif

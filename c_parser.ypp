@@ -158,7 +158,7 @@ cond_expr
 	
 assign_expr
 	: cond_expr {$$ = $1;}
-	| unary_expr assign_op assign_expr
+	| unary_expr assign_op assign_expr {$$ = new assign_expr($1, $3);}
 	;
 	
 assign_op
@@ -205,7 +205,7 @@ decln_specs
 */	
 
 init_declr
-	: declr 
+	: declr {$$ = $1;}
 	| declr '=' initzer {$$ = new init_declr($1, $3);}
 	;
 	
@@ -393,10 +393,7 @@ extern_decln
 	;
 
 fn_defn
-	: decln_specs declr
-	| declr
-	| decln_l comp_stmt {new fn_defn($1, $2);}
-	| comp_stmt
+	: decln_specs declr comp_stmt {$$ = new fn_defn($1, $2, $3);}
 	;
 
 		
@@ -408,8 +405,10 @@ void yyerror(const char *){
 int main(){
 	yyparse();
 	cout << treeroot << endl;
-	treeroot->evaluate();
+
+	treeroot->print();	
 	cout << endl;
-	treeroot->print();
+	treeroot->evaluate();
+	
 	return 0;
 }
