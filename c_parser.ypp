@@ -39,7 +39,7 @@
 
 %type <stmtnode> expr_stmt comp_stmt stmt_l stmt
 
-%type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr fn_defn 
+%type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr fn_defn decln_l
 
 
 
@@ -341,16 +341,16 @@ labeled_stmt
 	
 comp_stmt
 	: '{' stmt_l '}' {$$ = new comp_stmt(NULL,$2);}
-	//| '{' decln_l '}' {$$ = new comp_stmt($2,NULL);}
+	| '{' decln_l '}' {$$ = new comp_stmt($2,NULL);}
  	| '{''}' {$$ = new comp_stmt(NULL,NULL);}
-	//| '{' decln_l stmt_l '}' {$$ = new comp_stmt($2,$3);}
+	| '{' decln_l stmt_l '}' {$$ = new comp_stmt($2,$3);}
  	;
  	
-/*decln_l
+decln_l
 	: decln_l decln {$$ = new declnlist($1, $2);} 
 	| decln {$$ = $1;}
 	;
-*/
+
 stmt_l
 	: stmt {$$ = new stmtlist(NULL, $1);}
 	| stmt_l stmt {$$ = new stmtlist($1,$2);}
@@ -389,13 +389,13 @@ translation_unit
 	
 extern_decln
 	: fn_defn {$$ = $1; cout << "fn def" << endl;}
-	| decln {$$ = $1; cout << "decln" << endl;}
+	| decln_l {$$ = $1; cout << "decln" << endl;}
 	;
 
 fn_defn
 	: decln_specs declr
 	| declr
-	//| decln_l comp_stmt {new fn_defn($1, $2);}
+	| decln_l comp_stmt {new fn_defn($1, $2);}
 	| comp_stmt
 	;
 
