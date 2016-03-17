@@ -2,6 +2,7 @@
 #define AST_CLASS_HPP
 
 #include <iostream>
+#include <vector>
 #include <string>
 #include <list>
 #include <map>
@@ -44,27 +45,12 @@ class id_node : public expr_node{
 		int evaluate();
 };
 
-/*class stmt{
-	public:
-		virtual void print() = 0;
-		virtual void evaluate() = 0;
-};
-
-class assignment : public statement{
-	protected:
-		string id;
-		expr_node *expr;
-	public:
-		assignment(string name, expr_node *expression);
-		void print();
-		void evaluate();
-};
-*/
 
 class declarations{
 	public:
 		virtual void print() = 0;
-		virtual void evaluate() = 0;
+		virtual int evaluate() = 0;
+		virtual string eval_str();
 };
 
 class dir_declr : public declarations{
@@ -73,7 +59,8 @@ class dir_declr : public declarations{
 	public:
 		dir_declr(string id);
 		void print();
-		void evaluate();
+		int evaluate();
+		string eval_str();
 };
 
 class init : public declarations{
@@ -82,7 +69,7 @@ class init : public declarations{
 	public:
 		init(expr_node *expression);
 		void print();
-		void evaluate();
+		int evaluate();
 };
 
 class init_declr : public declarations{
@@ -92,7 +79,7 @@ class init_declr : public declarations{
 	public:
 		init_declr(declarations *dec, declarations *initzer);
 		void print();
-		void evaluate();
+		int evaluate();
 };
 
 class decln : public declarations{
@@ -102,9 +89,74 @@ class decln : public declarations{
 	public:
 		decln(string typespec, declarations *decl);
 		void print();
-		void evaluate();
+		int evaluate();
 };	
 
+class trans_unit : public declarations{
+	protected:	
+		declarations* translu;
+		declarations* decl;
+
+	public:
+		trans_unit(declarations* T, declarations* D);
+		void print();
+		int evaluate();
+};
+
+class stmt{
+	public:
+		virtual void print() = 0;
+		virtual int evaluate() = 0;
+};
+
+class comp_stmt : public stmt{
+	protected:
+		declarations* declnlist;
+		stmt* stmtlist;
+	public:
+		comp_stmt(declarations* D, stmt* S);
+		void print();
+		int evaluate();	
+};
+
+class declnlist : public declarations{
+	protected:
+		declarations* left;
+		declarations* right;
+	public:
+	 	declnlist(declarations* L, declarations* R);
+		void print();
+		int evaluate();
+};	
+
+class stmtlist : public stmt{
+	protected:
+		stmt* left;
+		stmt* right;
+	public:
+		stmtlist(stmt* L, stmt* R);
+		void print();
+		int evaluate();
+};
+
+class expr_stmt : public stmt{
+	protected:
+		expr_node* expr;
+	public:
+		expr_stmt(expr_node* exprnode);
+		void print();
+		int evaluate();
+};
+
+class fn_defn : public declarations{
+	protected:
+		declarations* decln_l;
+		stmt* comp_stmt;
+	public:
+		fn_defn(declarations* declnlist, stmt* compstmt);
+		void print();
+		int evaluate();
+};
 
 extern map<string, int> idMap;
 

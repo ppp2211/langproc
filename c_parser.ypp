@@ -13,9 +13,12 @@
 
 	extern "C" int yylex(void);
   	void yyerror(const char *);
-
-	static declarations *treeroot;
 }
+
+%code{
+	declarations* treeroot;
+}
+
 
 %token <num> C_DEC C_HEX C_OCT
 %token <id> IDENT 
@@ -26,17 +29,17 @@
 	int num;
 	char *id;
 	expr_node *exprnode;
-	//stmt *stmtnode;
+	stmt *stmtnode;
 	declarations *declnode;
 }	
 
 %type <id> decln_specs;
 
-%type <exprnode> prim_expr postfix_expr unary_expr cast_expr mult_expr add_expr shift_expr rel_expr eq_expr and_expr xor_expr or_expr logand_expr logor_expr cond_expr assign_expr;
+%type <exprnode> prim_expr postfix_expr unary_expr cast_expr mult_expr add_expr shift_expr rel_expr eq_expr and_expr xor_expr or_expr logand_expr logor_expr cond_expr assign_expr expr
 
-//%type <smmtnode>
+%type <stmtnode> expr_stmt comp_stmt stmt_l stmt
 
-%type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr
+%type <declnode> translation_unit extern_decln decln init_declr initzer declr direct_declr fn_defn 
 
 
 
@@ -173,7 +176,7 @@ assign_op
 	;
 	
 expr
-	: assign_expr
+	: assign_expr {$$ = $1;}
 	| expr ',' assign_expr
 	;
 	
@@ -183,7 +186,7 @@ const_expr
 	
 decln
 	: decln_specs ';'
-	| decln_specs init_declr ';' {$$ = new decln($1, $2); treeroot = $$;} 
+	| decln_specs init_declr ';' {$$ = new decln($1, $2); cout << "DECL" << endl;} 
 	;
 
 decln_specs 
@@ -249,9 +252,9 @@ direct_declr
 	| '(' declr ')'
 	| direct_declr '[' const_expr ']'
 	| direct_declr '['']'
-	| direct_declr '(' param_type_l ')'
-	| direct_declr '(' ident_l ')'
-	| direct_declr '('')'
+	| direct_declr '(' param_type_l ')' // for fn definitions
+	| direct_declr '(' ident_l ')' // for fn calls
+	| direct_declr '('')' {$$ = $1;} // for fn definitions
 	;
 	
 ptr
@@ -323,8 +326,8 @@ initzer_l
 	
 stmt
 	: labeled_stmt
-	| comp_stmt
-	| expr_stmt
+	| comp_stmt {$$ = $1;}
+	| expr_stmt {$$ = $1;}
 	| sel_stmt
 	| iteration_stmt
 	| jump_stmt
@@ -337,25 +340,25 @@ labeled_stmt
 	;
 	
 comp_stmt
-	: '{' decln_l stmt_l '}' 
-	| '{' stmt_l '}'
-	| '{' decln_l '}'
- 	| '{''}'
+	: '{' stmt_l '}' {$$ = new comp_stmt(NULL,$2);}
+	//| '{' decln_l '}' {$$ = new comp_stmt($2,NULL);}
+ 	| '{''}' {$$ = new comp_stmt(NULL,NULL);}
+	//| '{' decln_l stmt_l '}' {$$ = new comp_stmt($2,$3);}
  	;
  	
-decln_l
-	: decln
-	| decln_l decln
+/*decln_l
+	: decln_l decln {$$ = new declnlist($1, $2);} 
+	| decln {$$ = $1;}
 	;
-	
+*/
 stmt_l
-	: stmt
-	| stmt_l stmt
+	: stmt {$$ = new stmtlist(NULL, $1);}
+	| stmt_l stmt {$$ = new stmtlist($1,$2);}
 	;
 	
 expr_stmt
-	: ';'
-	| expr ';'
+	: ';' {$$ = new expr_stmt(NULL);}
+	| expr ';' {$$ = new expr_stmt($1);}
 	;
 	
 sel_stmt
@@ -380,19 +383,19 @@ jump_stmt
 	;
 	
 translation_unit	
-	: extern_decln {$$ = $1;}
-	| translation_unit extern_decln
+	: extern_decln {$$ = new trans_unit(NULL,$1); treeroot = $$; cout << "transl_short" << endl;}
+	| translation_unit extern_decln {$$ = new trans_unit($1, $2); treeroot = $$; cout << "transl long" << endl;}
 	;
 	
 extern_decln
-	: fn_defn
-	| decln {$$ = $1;}
+	: fn_defn {$$ = $1; cout << "fn def" << endl;}
+	| decln {$$ = $1; cout << "decln" << endl;}
 	;
 
 fn_defn
 	: decln_specs declr
 	| declr
-	| decln_l comp_stmt
+	//| decln_l comp_stmt {new fn_defn($1, $2);}
 	| comp_stmt
 	;
 
@@ -404,6 +407,7 @@ void yyerror(const char *){
 
 int main(){
 	yyparse();
+	cout << treeroot << endl;
 	treeroot->evaluate();
 	cout << endl;
 	treeroot->print();
